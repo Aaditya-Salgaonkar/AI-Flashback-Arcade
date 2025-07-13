@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snake 2077 - AI Flashback Arcade</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Orbitron', 'Share Tech Mono', monospace;
+      background: #000;
+      color: #00ffcc;
+      overflow: hidden;
+    }
+    body {
+      display: flex;
+    }
+    .left, .right {
+      padding: 20px;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .left {
+      width: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-right: 2px solid #00ffcc44;
+    }
+    .right {
+      width: 50%;
+      background-color: #111;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    h1 {
+      font-size: 36px;
+      margin: 0 0 20px;
+      text-shadow: 0 0 10px #00ffcc;
+    }
+    canvas {
+      border: 2px solid #00ffcc;
+      background-color: #000;
+      box-shadow: 0 0 20px #00ffcc;
+    }
+    button {
+      background: linear-gradient(45deg, #00ffcc, #00bfff);
+      color: black;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-family: 'Orbitron';
+      border-radius: 5px;
+      margin: 15px 5px 0;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00ffcc;
+    }
+    .dashboard-section {
+      background: #000;
+      padding: 15px;
+      border: 1px solid #00ffcc22;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #00ffcc33;
+    }
+    .dashboard-section h2 {
+      font-size: 20px;
+      margin: 0 0 10px;
+      color: #00ffaa;
+    }
+    #aiMessage, #scoreDisplay, #speedDisplay, #bestMove {
+      font-size: 16px;
+      color: #ffffff;
+      margin: 5px 0;
+    }
+    .highlight {
+      color: #ff00ff;
+    }
+    #miniMap {
+      display: grid;
+      grid-template-columns: repeat(20, 1fr);
+      gap: 1px;
+      width: 200px;
+    }
+    .cell {
+      width: 10px;
+      height: 10px;
+      background-color: #222;
+    }
+    .fruit { background-color: #00ff00; }
+    .snake { background-color: #00bfff; }
+    .head { background-color: #ffffff; }
+  </style>
+</head>
+<body>
+
+<div class="left">
+  <h1>🐍 Snake 2077</h1>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div>
+    <button onclick="restartGame()">🔁 Restart</button>
+    <button onclick="location.href='../index.html'">🏠 Main Menu</button>
+  </div>
+</div>
+
+<div class="right">
+  <div class="dashboard-section">
+    <h2>🧠 AI Reflex Dashboard</h2>
+    <div id="aiMessage">Initializing neural net...</div>
+    <div id="scoreDisplay">Score: 0</div>
+    <div id="speedDisplay">Speed: Normal</div>
+    <div id="bestMove">Best Move: <span class="highlight">→ Right</span></div>
+  </div>
+
+  <div class="dashboard-section">
+    <h2>🔍 Tron Grid Vision</h2>
+    <div id="miniMap"></div>
+  </div>
+
+  <div class="dashboard-section">
+    <h2>🧬 Neural Arcade Coach</h2>
+    <div id="aiTip">Loading strategic tips...</div>
+  </div>
+</div>
+
+<!-- Sound effects -->
+<audio id="eatSound" src="assets/sounds/eat.mp3" preload="auto"></audio>
+<audio id="deathSound" src="assets/sounds/death.mp3" preload="auto"></audio>
+<audio id="turnSound" src="assets/sounds/turn.mp3" preload="auto"></audio>
+
+<script>
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+  const aiMessage = document.getElementById("aiMessage");
+  const scoreDisplay = document.getElementById("scoreDisplay");
+  const speedDisplay = document.getElementById("speedDisplay");
+  const bestMoveDisplay = document.getElementById("bestMove");
+  const miniMap = document.getElementById("miniMap");
+  const aiTip = document.getElementById("aiTip");
+
+  const eatSound = document.getElementById("eatSound");
+  const deathSound = document.getElementById("deathSound");
+  const turnSound = document.getElementById("turnSound");
+
+  function playSound(sound) {
+    sound.currentTime = 0;
+    sound.play().catch(e => {});
+  }
+
+  let snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
+  let dir = { x: 1, y: 0 };
+  let fruit = { x: 10, y: 10 };
+  let score = 0;
+  let speed = 150;
+  let gameLoop;
+
+  const aiTips = [
+    "⚡ Predict your tail's future — retro AI always plans ahead.",
+    "🎯 Apple location is deterministic; route like it's 1989.",
+    "🧠 Rule of 3s: Think 3 blocks, 3 turns, 3 seconds ahead.",
+    "📡 Don't chase food — trap it in your path instead.",
+    "🌀 Use corners like circuit boards, not cul-de-sacs.",
+    "🔗 Minimize tight turns — AI reads these as entropy.",
+    "🎮 Arcade AI Tip: Top-left start > bottom-right trap.",
+    "🔍 Treat each quadrant as a mini-game — sweep in spirals.",
+    "🎞 In slow mode, learn moves as frame-by-frame memory."
+  ];
+
+  function rotateAITips() {
+    setInterval(() => {
+      const tip = aiTips[Math.floor(Math.random() * aiTips.length)];
+      aiTip.innerText = tip;
+    }, 6000);
+  }
+
+  function mod(n, m) {
+    return ((n % m) + m) % m;
+  }
+
+  function drawGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#111";
+    for (let i = 0; i <= 400; i += 20) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0); ctx.lineTo(i, 400); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i); ctx.lineTo(400, i); ctx.stroke();
+    }
+
+    ctx.fillStyle = "#00ff00";
+    ctx.fillRect(fruit.x * 20, fruit.y * 20, 20, 20);
+
+    snake.forEach((part, i) => {
+      ctx.fillStyle = i === 0 ? "#ffffff" : "#00bfff";
+      ctx.fillRect(part.x * 20, part.y * 20, 20, 20);
+    });
+  }
+
+  function drawMiniMap() {
+    miniMap.innerHTML = '';
+    for (let y = 0; y < 20; y++) {
+      for (let x = 0; x < 20; x++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        if (fruit.x === x && fruit.y === y) cell.classList.add("fruit");
+        const s = snake.find(p => p.x === x && p.y === y);
+        if (s) {
+          cell.classList.add("snake");
+          if (snake[0].x === x && snake[0].y === y) cell.classList.add("head");
+        }
+        miniMap.appendChild(cell);
+      }
+    }
+  }
+
+  function getBestMove() {
+    const head = snake[0];
+    const options = [
+      { x: 0, y: -1, name: "↑ Up" },
+      { x: 0, y: 1, name: "↓ Down" },
+      { x: -1, y: 0, name: "← Left" },
+      { x: 1, y: 0, name: "→ Right" },
+    ];
+
+    let best = null, minDist = Infinity;
+    for (const opt of options) {
+      const nx = mod(head.x + opt.x, 20);
+      const ny = mod(head.y + opt.y, 20);
+      const danger = snake.some(s => s.x === nx && s.y === ny);
+      if (!danger) {
+        const dist = Math.abs(fruit.x - nx) + Math.abs(fruit.y - ny);
+        if (dist < minDist) {
+          best = opt;
+          minDist = dist;
+        }
+      }
+    }
+
+    bestMoveDisplay.innerHTML = `Best Move: <span class="highlight">${best ? best.name : "None"}</span>`;
+    return best;
+  }
+
+  function updateGame() {
+    const head = { ...snake[0] };
+    head.x = mod(head.x + dir.x, 20);
+    head.y = mod(head.y + dir.y, 20);
+
+    if (snake.slice(1).some(s => s.x === head.x && s.y === head.y)) {
+      playSound(deathSound);
+      return endGame();
+    }
+
+    snake.unshift(head);
+    if (head.x === fruit.x && head.y === fruit.y) {
+      score++;
+      fruit = generateFruit();
+      playSound(eatSound);
+      showAI("🍏 Fruit consumed.");
+      if (score % 5 === 0 && speed > 60) {
+        speed -= 10;
+        clearInterval(gameLoop);
+        gameLoop = setInterval(updateGame, speed);
+        speedDisplay.innerText = `Speed: Fast (${speed}ms)`;
+      }
+    } else {
+      snake.pop();
+    }
+
+    drawGame();
+    drawMiniMap();
+    getBestMove();
+    scoreDisplay.innerText = `Score: ${score}`;
+  }
+
+  function generateFruit() {
+    let f;
+    do {
+      f = { x: Math.floor(Math.random() * 20), y: Math.floor(Math.random() * 20) };
+    } while (snake.some(s => s.x === f.x && s.y === f.y));
+    return f;
+  }
+
+  function showAI(msg) {
+    aiMessage.innerText = msg;
+  }
+
+  function restartGame() {
+    snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
+    dir = { x: 1, y: 0 };
+    fruit = generateFruit();
+    score = 0;
+    speed = 150;
+    speedDisplay.innerText = "Speed: Normal";
+    clearInterval(gameLoop);
+    drawGame();
+    drawMiniMap();
+    getBestMove();
+    gameLoop = setInterval(updateGame, speed);
+    showAI("🧠 Neural system rebooted. Ready for action.");
+  }
+
+  function endGame() {
+    clearInterval(gameLoop);
+    showAI("💀 Simulation terminated. Avoid collisions.");
+    ctx.fillStyle = "#ff0044";
+    ctx.font = "36px Orbitron";
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
+  }
+
+  document.addEventListener("keydown", e => {
+    let changed = false;
+    if (e.key === "ArrowUp" && dir.y !== 1) { dir = { x: 0, y: -1 }; changed = true; }
+    else if (e.key === "ArrowDown" && dir.y !== -1) { dir = { x: 0, y: 1 }; changed = true; }
+    else if (e.key === "ArrowLeft" && dir.x !== 1) { dir = { x: -1, y: 0 }; changed = true; }
+    else if (e.key === "ArrowRight" && dir.x !== -1) { dir = { x: 1, y: 0 }; changed = true; }
+    if (changed) playSound(turnSound);
+  });
+
+  restartGame();
+  rotateAITips();
+</script>
+</body>
+</html>

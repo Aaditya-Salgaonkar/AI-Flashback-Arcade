@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Retro Arcade Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    /* RESET & BASE */
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: radial-gradient(circle at top left, #001117, #000000 80%);
+      color: #eee;
+      font-family: 'Orbitron', sans-serif;
+      overflow: hidden;
+    }
+
+    /* PARTICLE BACKGROUND */
+    #particles {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%; z-index: -2;
+      background: radial-gradient(circle at center, rgba(0,255,204,0.1), transparent 70%);
+    }
+    .particle {
+      position: absolute; width: 4px; height: 4px;
+      background: rgba(0,255,204,0.4);
+      border-radius: 50%;
+      animation: drift linear infinite;
+    }
+    @keyframes drift {
+      from { transform: translateY(0) translateX(0) scale(1); opacity:1; }
+      to   { transform: translateY(-800px) translateX(200px) scale(0.3); opacity:0; }
+    }
+
+    /* TITLE */
+    h1 {
+      font-size: 4rem;
+      color: #00ffcc;
+      text-shadow: 0 0 20px #00ffee, 0 0 40px #00ffee88;
+      animation: glowTitle 2s ease-in-out infinite alternate;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    @keyframes glowTitle {
+      from { text-shadow: 0 0 20px #00ffee; }
+      to   { text-shadow: 0 0 40px #00ffee66; }
+    }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-block; margin: 15px;
+      padding: 15px 50px; font-size: 1.5rem;
+      color: #fff; background: linear-gradient(135deg,#00ffaa,#008877);
+      border: 2px solid #00ffcc; border-radius: 8px;
+      box-shadow: 0 0 15px #00ffaa88, inset 0 0 5px rgba(255,255,255,0.2);
+      position: relative; z-index: 1;
+      transition: transform .3s, box-shadow .3s;
+    }
+    .btn::before {
+      content: ''; position: absolute;
+      top: -5px; left: -5px; right: -5px; bottom: -5px;
+      background: inherit; filter: blur(10px);
+      z-index: -1; border-radius: 10px;
+      opacity: 0; transition: opacity .3s;
+    }
+    .btn:hover {
+      transform: translateY(-6px) scale(1.05);
+      box-shadow: 0 0 25px #00ffcc, inset 0 0 10px rgba(255,255,255,0.3);
+    }
+    .btn:hover::before { opacity: 1; }
+
+    /* FOOTER (optional center) */
+    footer {
+      position: absolute; bottom: 20px;
+      font-size: 0.9rem; color: #555; text-align: center;
+      width: 100%;
+    }
+    footer a { color: #00ffaa; margin: 0 10px; transition: color .2s; }
+    footer a:hover { color: #fff; }
+
+    /* RESPONSIVE */
+    @media(max-width:600px) {
+      h1 { font-size: 2.5rem; }
+      .btn { padding: 12px 30px; font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Particle background -->
+  <div id="particles"></div>
+
+  <!-- Centered Content -->
+  <h1>🎮 Snake Classic</h1>
+  <div>
+    <a href="snake.html" class="btn ">▶ Play Now</a>
+    <a href="../index.html" class="btn">🏠 Main Menu</a>
+  </div>
+
+ 
+
+  <script>
+    // Create animated particles
+    const particleCount = 80;
+    const container = document.getElementById('particles');
+    for (let i = 0; i < particleCount; i++) {
+      const p = document.createElement('div');
+      p.classList.add('particle');
+      p.style.left = Math.random() * 100 + '%';
+      p.style.top  = Math.random() * 100 + '%';
+      const size = Math.random() * 3 + 2;
+      p.style.width = p.style.height = size + 'px';
+      p.style.animationDuration = (Math.random() * 15 + 5) + 's';
+      p.style.animationDelay = -Math.random() * 20 + 's';
+      container.appendChild(p);
+    }
+  </script>
+</body>
+</html>
