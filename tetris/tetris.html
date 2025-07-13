@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Tetris – Premium</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      font-family: 'Orbitron', 'Share Tech Mono', monospace;
+      background: #000; color: #00ffcc; overflow: hidden;
+    }
+    body { display: flex; }
+    .left, .right {
+      padding: 20px; height: 100vh; overflow-y: auto;
+    }
+    .left {
+      width: 50%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border-right: 2px solid #00ffcc44;
+    }
+    .right {
+      width: 50%; background-color: #111;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    h1 { font-size: 32px; margin: 10px 0; text-shadow: 0 0 10px #00ffcc; }
+    canvas {
+      border: 2px solid #00ffcc;
+      background-color: #000;
+      box-shadow: 0 0 20px #00ffcc;
+    }
+    button {
+      background: linear-gradient(45deg, #00ffcc, #00bfff);
+      color: black; border: none; padding: 10px 20px;
+      font-size: 14px; font-family: 'Orbitron';
+      border-radius: 5px; margin: 15px 5px 0;
+      cursor: pointer; box-shadow: 0 0 10px #00ffcc;
+    }
+    .dashboard-section {
+      background: #000; padding: 15px;
+      border: 1px solid #00ffcc22; border-radius: 8px;
+      box-shadow: 0 0 10px #00ffcc33;
+    }
+    .dashboard-section1 {
+      background: #000; padding: 15px;
+      border: 1px solid #00ffcc22; border-radius: 8px;
+      box-shadow: 0 0 10px #00ffcc33;
+      width: 200px;
+      
+    }
+    .dashboard-section h2 {
+      font-size: 20px; margin-bottom: 10px; color: #00ffaa;
+    }
+    #scoreDisplay, #aiPiece, #aiSuggestion, #aiReason, #message, #tips {
+      font-size: 16px; color: #ffffff; margin: 5px 0;
+    }
+    #message {
+      font-size: 20px; text-align: center; color: #ff00ff;
+      text-shadow: 0 0 10px #ff00ff; margin-top: 15px;
+    }
+    .controls {
+      background: #000; padding: 15px; border: 1px solid #00ffcc22;
+      border-radius: 8px; box-shadow: 0 0 10px #00ffcc33;
+    }
+    .controls h2 {
+      font-size: 20px; color: #00ffaa; margin-bottom: 10px;
+    }
+    .controls ul { margin:0; padding-left: 20px; }
+    .controls li { font-size: 14px; margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <audio id="bgMusic" loop autoplay>
+    <source src="/tetris/assets/sound/tetris_soundtrack.mp3" type="audio/mp3">
+  </audio>
+
+  <div class="left">
+    <h1 style="padding-bottom: 50px;">AI TETRIS 2077</h1>
+    <canvas id="gameCanvas" width="200" height="400"></canvas>
+    <div style="padding-top: 50px;">
+      <button onclick="startGame()">Start/Restart Game</button>
+      <button onclick="stopGame()">Stop Game</button>
+      <button onclick="toggleMusic()">🎵 Toggle Music</button>
+      <a href="tetris_menu.html"><button >Go Back</button></a>
+      
+    </div>
+    <div id="message"></div>
+  </div>
+
+  <div class="right">
+  <div style="display: flex; gap: 10px; justify-content: space-between;">
+    <div class="dashboard-section" style="flex: 1;">
+      <h2>Score</h2>
+      <div id="scoreDisplay">0</div>
+    </div>
+    <div class="dashboard-section" style="flex: 1;">
+      <h2>Current Piece</h2>
+      <div id="aiPiece">-</div>
+    </div>
+    <div class="dashboard-section" style="flex: 1;">
+      <h2>AI Suggestion</h2>
+      <div id="aiSuggestion">-</div>
+    </div>
+  </div>
+
+  <div class="dashboard-section">
+    <h2>Why?</h2>
+    <div id="aiReason">-</div>
+  </div>
+
+  <div class="dashboard-section" id="tips">
+    <h2>Tips to Increase Score</h2>
+    <ul>
+      <li>💡 Complete lines to +10 pts per line</li>
+      <li>⚡ Clear multiple lines in a row for speed bonus</li>
+      <li>🔍 Follow AI advice to avoid gaps</li>
+      <li>⌛ Drop pieces quickly to maximize speed bonus</li>
+    </ul>
+  </div>
+
+  <div class="controls">
+    <h2>Controls</h2>
+    <ul>
+      <li><span class="highlight">←</span> / <span class="highlight">→</span>: Move</li>
+      <li><span class="highlight">↓</span>: Fast drop</li>
+      <li><span class="highlight">↑</span>: Rotate</li>
+      <li>Start / Stop Game buttons to control gameplay</li>
+      <li>🎵 Music button toggles soundtrack</li>
+    </ul>
+  </div>
+</div>
+
+
+  <script>
+    const canvas = document.getElementById("gameCanvas"),
+          ctx = canvas.getContext("2d");
+    const blockSize = 20, cols = 10, rows = 20;
+    const colors = { I:'#00FFFF', O:'#FFD700', T:'#DA70D6', S:'#7CFC00', Z:'#FF4500', J:'#1E90FF', L:'#FFA500' };
+    const shapes = {
+      I: [[1,1,1,1]], O:[[1,1],[1,1]], T:[[0,1,0],[1,1,1]],
+      S:[[0,1,1],[1,1,0]], Z:[[1,1,0],[0,1,1]],
+      J:[[1,0,0],[1,1,1]], L:[[0,0,1],[1,1,1]]
+    };
+
+    let board, current, posX, posY, interval, score=0, speed;
+    const maxScore = 250;
+
+    function initBoard() {
+      board = Array(rows).fill().map(() => Array(cols).fill(''));
+    }
+
+    function spawn() {
+      const keys = Object.keys(shapes), k = keys[Math.floor(Math.random()*keys.length)];
+      current = { shape: shapes[k], color: colors[k], name: k };
+      posX = Math.floor(cols/2 - current.shape[0].length/2);
+      posY = 0;
+      updateAI();
+      if (!isValid(0,0)) endGame(false);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      board.forEach((r, y) => r.forEach((c, x) => c && drawBlock(x,y,c)));
+      drawPiece();
+    }
+
+    function drawBlock(x,y,col) {
+      const grad = ctx.createLinearGradient(x*blockSize,y*blockSize,(x+1)*blockSize,(y+1)*blockSize);
+      grad.addColorStop(0, col); grad.addColorStop(1, '#ffffff22');
+      ctx.fillStyle = grad;
+      ctx.shadowColor = col; ctx.shadowBlur = 15;
+      ctx.fillRect(x*blockSize, y*blockSize, blockSize-1, blockSize-1);
+      ctx.shadowBlur = 0;
+    }
+
+    function drawPiece() {
+      current.shape.forEach((r,dy)=>r.forEach((c,dx)=> c && drawBlock(posX+dx,posY+dy,current.color)));
+    }
+
+    function isValid(dx,dy, shape=current.shape) {
+      return shape.every((r, dy2) => r.every((c, dx2) => {
+        if (!c) return true;
+        const x = posX+dx2+dx, y = posY+dy2+dy;
+        return x>=0 && x<cols && y<rows && (y<0 || !board[y][x]);
+      }));
+    }
+
+    function rotate(s) { return s[0].map((_,i)=>s.map(r=>r[i]).reverse()); }
+
+    function merge() {
+      current.shape.forEach((r,dy)=>r.forEach((c,dx)=>{ if(c) board[posY+dy][posX+dx]=current.color; }));
+    }
+
+    function clearLines() {
+      let lines=0;
+      for (let y=rows-1;y>=0;y--){
+        if(board[y].every(c=>c)){
+          board.splice(y,1); board.unshift(Array(cols).fill(''));
+          lines++; y++;
+        }
+      }
+      score += lines*10;
+      if (score % 50===0 && speed>200){
+        speed-=100;
+        clearInterval(interval);
+        interval = setInterval(step, speed);
+      }
+      document.getElementById('scoreDisplay').textContent = score;
+      if (score>=maxScore) endGame(true);
+    }
+
+    function step() {
+      if (isValid(0,1)) posY++;
+      else { merge(); clearLines(); spawn(); }
+      draw(); updateAI();
+    }
+
+    function updateAI() {
+      document.getElementById('aiPiece').textContent = current.name;
+      const colsFree = [...Array(cols).keys()].filter(c=>isValid(c-posX,0));
+      const chosen = colsFree[Math.floor(Math.random()*colsFree.length)];
+      const reasons = [
+        "Avoid holes & maximize line potential.",
+        "Place for quickest drop.",
+        "Fits terrain shape.",
+        "Keeps board flat."
+      ];
+      document.getElementById('aiSuggestion').textContent = `Drop at col ${chosen}`;
+      document.getElementById('aiReason').textContent = reasons[Math.floor(Math.random()*reasons.length)];
+    }
+
+    function endGame(win) {
+      clearInterval(interval);
+      document.getElementById('message').textContent = win ? '🎉 YOU WIN!' : '❌ GAME OVER';
+    }
+
+    function startGame() {
+      initBoard(); score=0; speed=800;
+      document.getElementById('message').textContent='';
+      document.getElementById('scoreDisplay').textContent = score;
+      spawn(); clearInterval(interval);
+      interval = setInterval(step, speed);
+    }
+
+    function stopGame() { clearInterval(interval); }
+
+    function toggleMusic() {
+      const m = document.getElementById('bgMusic');
+      m.paused ? m.play() : m.pause();
+    }
+
+    document.addEventListener('keydown', e => {
+      if (!interval) return;
+      if (e.key==='ArrowLeft' && isValid(-1,0)) posX--;
+      else if (e.key==='ArrowRight' && isValid(1,0)) posX++;
+      else if (e.key==='ArrowDown') step();
+      else if (e.key==='ArrowUp') {
+        const r = rotate(current.shape);
+        if (isValid(0,0,r)) current.shape = r;
+      }
+      draw(); updateAI();
+    });
+  </script>
+</body>
+</html>

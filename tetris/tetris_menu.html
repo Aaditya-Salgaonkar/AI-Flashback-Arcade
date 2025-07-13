@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tetris | AI Flashback Arcade</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+  <style>
+    /* RESET & BASE */
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at top left, #1a0a00, #000 80%);
+      font-family: 'Orbitron', sans-serif;
+      color: #ffa500;
+      position: relative;
+      text-align: center;
+    }
+
+    /* PARTICLE BACKGROUND */
+    #particles {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%; z-index: -2;
+      background: radial-gradient(circle at center, rgba(255,165,0,0.1), transparent 70%);
+    }
+    .particle {
+      position: absolute; width: 3px; height: 3px;
+      background: rgba(255,165,0,0.4);
+      border-radius: 50%;
+      animation: drift linear infinite;
+    }
+    @keyframes drift {
+      from { transform: translateY(0) translateX(0) scale(1); opacity:1; }
+      to   { transform: translateY(-800px) translateX(150px) scale(0.3); opacity:0; }
+    }
+
+    /* SCAN‑LINE OVERLAY */
+    body::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,165,0,0.03) 0px,
+        rgba(255,165,0,0.03) 1px,
+        transparent 1px,
+        transparent 4px
+      );
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* TITLE */
+    h1 {
+      font-size: 4rem;
+      color: #ffb733;
+      text-shadow: 0 0 20px #ffb733, 0 0 40px #ffb73388;
+      margin-bottom: 30px;
+      animation: glow 2s ease-in-out infinite alternate;
+      z-index:1;
+    }
+    @keyframes glow {
+      from { text-shadow: 0 0 20px #ffb733; }
+      to   { text-shadow: 0 0 40px #ffb833af; }
+    }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-block;
+      margin: 12px;
+      padding: 14px 36px;
+      font-size: 1.2rem;
+      color: #000;
+      background: linear-gradient(135deg, #ffb733, #cc7f00);
+      border: 2px solid #ffb733;
+      border-radius: 8px;
+      box-shadow: 0 0 15px #ffb73388, inset 0 0 5px rgba(255,255,255,0.2);
+      transition: transform .3s, box-shadow .3s, background .3s;
+      position: relative;
+      z-index:1;
+    }
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: -5px; left: -5px; right: -5px; bottom: -5px;
+      background: inherit;
+      filter: blur(10px);
+      z-index: -1;
+      border-radius: 10px;
+      opacity: 0;
+      transition: opacity .3s;
+    }
+    .btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 0 30px #ffb733, inset 0 0 10px rgba(255,255,255,0.3);
+      background: linear-gradient(135deg, #cc7f00, #ffb733);
+    }
+    .btn:hover::before { opacity: 1; }
+
+    /* LINK UNDER BUTTON */
+    p a {
+      font-size: 1rem;
+      color: #ffa500;
+      text-decoration: none;
+      margin-top: 8px;
+      display: inline-block;
+      transition: color .2s;
+      z-index:1;
+    }
+    p a:hover { color: #fff; }
+
+    /* RESPONSIVE */
+    @media(max-width:600px) {
+      h1 { font-size: 2.5rem; }
+      .btn { padding: 12px 24px; font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Particle Layer -->
+  <div id="particles"></div>
+
+  <!-- Centered Content -->
+  <h1>🧩 Tetris</h1>
+  <p><a href="tetris.html" class="btn">▶ Play Now</a></p>
+  <p><a href="../index.html" class="btn">🏠 Main Menu</a></p>
+
+  <script>
+    // Generate particles
+    const particleCount = 100;
+    const container = document.getElementById('particles');
+    for (let i = 0; i < particleCount; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.top  = Math.random() * 100 + '%';
+      const size = Math.random() * 3 + 1;
+      p.style.width  = size + 'px';
+      p.style.height = size + 'px';
+      p.style.animationDuration = (Math.random() * 12 + 4) + 's';
+      p.style.animationDelay    = -(Math.random() * 20) + 's';
+      container.appendChild(p);
+    }
+  </script>
+</body>
+</html>
