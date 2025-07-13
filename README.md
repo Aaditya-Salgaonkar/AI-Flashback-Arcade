@@ -1,6 +1,9 @@
 ## 🎮 AI Flashback Arcade
 
 A nostalgic revival of classic arcade games like Snake, Tetris, and Ping Pong — reimagined with modern AI enhancements, glowing neon aesthetics, and an interactive dashboard. Built for OSDHack 2025 with the theme *"Blast From the Past."*
+---
+
+![Logo](https://github.com/Aaditya-Salgaonkar/AI-Flashback-Arcade/blob/main/assets/images/Screenshot%202025-07-13%20164601.png?raw=true)
 
 ---
 
