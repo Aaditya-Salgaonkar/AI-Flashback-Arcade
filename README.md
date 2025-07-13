@@ -98,3 +98,4 @@ Computer Engineering Student & Builder
 ## 🏁 Final Words
 
 This project was built in under 48 hours for **OSDHack 2025**, themed "Blast from the Past." A love letter to the golden age of games — with a modern twist.
+A special thanks to the organisers of **OSD Hack 2025**, the judges, the speakers and everyone involved in the successful execution of the event. It was truly a great experience bringing past retro based flash games to life with ai and other modern twists.
