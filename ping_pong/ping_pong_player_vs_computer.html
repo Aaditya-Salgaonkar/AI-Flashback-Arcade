@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Retro Pong Premium AI Metrics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; padding:0; background:radial-gradient(#000,#110035); color:#fff; font-family:'Orbitron',sans-serif; overflow:hidden; }
+    h1 { margin:20px 0 0; font-size:3em; color:#00ffcc; text-shadow:0 0 20px #00ffee; text-align:center; }
+    #gameCanvas { display:block; margin:20px auto; background:#000; border:4px solid #00ffcc; box-shadow:0 0 30px #00ffccaa; }
+    #controls { text-align:center; margin-bottom:10px; }
+    button { background:#00ffaa; border:none; padding:10px 25px; margin:0 10px; font-size:18px; cursor:pointer; box-shadow:0 0 12px #00ffaa88; transition:.2s; }
+    button:hover { background:#00ddaa; }
+    #winner { font-size:2em; margin-top:10px; text-align:center; color:#00ffcc; text-shadow:0 0 12px #00ffee; }
+    #infoPanel { position:fixed; right:20px; top:80px; width:280px; background:rgba(0,0,0,0.75); border:2px solid #00ffcc; box-shadow:0 0 20px #00ffccaa; border-radius:10px; padding:15px; }
+    #infoPanel h2 { font-size:1.4em; margin:0 0 10px; color:#00ffaa; text-shadow:0 0 8px #00ffcc; }
+    .section { margin-bottom:12px; }
+    .section label { font-weight:bold; display:block; margin-bottom:4px; font-size:.9em; color:#00ffaa; }
+    .section span, .section div { font-size:.9em; }
+    ul#aiHints { list-style:none; padding:0; margin:0; font-size:.85em; }
+    ul#aiHints li { margin:6px 0; }
+  </style>
+</head>
+<body>
+  <h1>🏓 Retro Pong 2077</h1>
+  <canvas id="gameCanvas" width="700" height="400"></canvas>
+  <div id="controls">
+    <button onclick="resetGame()">🔁 Reset</button>
+    <button onclick="togglePause()" id="pauseBtn">⏸ Pause</button>
+  </div>
+  <div id="winner"></div>
+
+  <div id="infoPanel">
+    <h2>🤖 AI Coach & Metrics</h2>
+    <div class="section">
+      <label>AI Hints:</label>
+      <ul id="aiHints"><li>Loading insights...</li></ul>
+    </div>
+    <div class="section">
+      <label>Adaptive Difficulty:</label>
+      <span id="diffLevel">Normal</span>
+    </div>
+    <div class="section">
+      <label>Predicted Bounce In:</label>
+      <span id="timeToBounce">—</span>s
+    </div>
+    <div class="section">
+      <label>🔥 Metrics:</label>
+      <div>Rally Count: <span id="rallyCount">0</span></div>
+      <div>Paddle Hits: <span id="hitCount">0</span></div>
+      <div>Wall Bounces: <span id="wallCount">0</span></div>
+      <div>Avg Reaction: <span id="avgReaction">—</span>ms</div>
+      <div>Game Time: <span id="gameTime">0.00</span>s</div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas"), ctx = canvas.getContext("2d");
+    const hintsList = document.getElementById("aiHints"),
+          diffLabel = document.getElementById("diffLevel"),
+          bounceLabel = document.getElementById("timeToBounce"),
+          rallyLabel = document.getElementById("rallyCount"),
+          hitLabel   = document.getElementById("hitCount"),
+          wallLabel  = document.getElementById("wallCount"),
+          reactionLabel = document.getElementById("avgReaction"),
+          timeLabel  = document.getElementById("gameTime");
+
+    const paddleW=10, paddleH=60, maxScore=10;
+    let paused=false, gameOver=false, startTime=Date.now();
+
+    const player1={x:20,y:170,score:0,dir:0},
+          player2={x:canvas.width-30,y:170,score:0},
+          ball   ={x:350,y:200,size:10,dx:4,dy:2};
+
+    let difficulty=1;
+    let rallyCount=0, hitCount=0, wallCount=0;
+    let lastHitTime=null, reactionTimes=[];
+
+    // Web Audio API setup
+    const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    function beep(freq, duration=100){
+      const osc = audioCtx.createOscillator();
+      const gain= audioCtx.createGain();
+      osc.frequency.value = freq;
+      osc.type = 'square';
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration/1000);
+      osc.stop(audioCtx.currentTime + duration/1000);
+    }
+    function playSound(type){
+      switch(type){
+        case 'bounce': beep(800, 50); break;
+        case 'wall':   beep(400, 80); break;
+        case 'goal':   beep(1200,150); break;
+        case 'win':    beep(200, 300); break;
+      }
+    }
+
+    function updateAIInsights(){
+      // Difficulty Logic
+      if(player1.score - player2.score >=2) difficulty=3;
+      else if(player2.score - player1.score >=2) difficulty=1;
+      else difficulty=2;
+      diffLabel.innerText = difficulty===1?'Normal':difficulty===2?'Hard':'Insane';
+
+      // Predict bounce time
+      const vy=ball.dy;
+      let t='∞';
+      if(vy>0) t=((canvas.height - ball.y - ball.size)/vy).toFixed(2);
+      else if(vy<0) t=(ball.y/ -vy).toFixed(2);
+      bounceLabel.innerText = t;
+
+      // Hints
+      const hints=[];
+      hints.push(ball.dx<0? 'Anticipate ↑ to hit back' : 'Center and wait');
+      hints.push(difficulty===3? 'Go aggressive!' : difficulty===1? 'Play safe' : 'Balance speed');
+      hintsList.innerHTML='';
+      hints.forEach(txt=>{
+        const li=document.createElement('li');
+        li.innerText=txt;
+        hintsList.appendChild(li);
+      });
+
+      // Metrics UI
+      rallyLabel.innerText = rallyCount;
+      hitLabel.innerText   = hitCount;
+      wallLabel.innerText  = wallCount;
+      const avg = reactionTimes.length
+        ? Math.round(reactionTimes.reduce((a,b)=>a+b,0)/reactionTimes.length)
+        : 0;
+      reactionLabel.innerText = avg || '—';
+      timeLabel.innerText = ((Date.now()-startTime)/1000).toFixed(2);
+    }
+
+    function drawRect(x,y,w,h){ ctx.fillStyle='#fff'; ctx.fillRect(x,y,w,h); }
+    function drawBall(){ ctx.fillStyle='#fff'; ctx.fillRect(ball.x,ball.y,ball.size,ball.size); }
+    function drawNet(){
+      ctx.setLineDash([10,10]); ctx.beginPath();
+      ctx.strokeStyle='#00ffaa';
+      ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height);
+      ctx.stroke();
+    }
+    function drawScore(){
+      ctx.font='40px Orbitron'; ctx.fillStyle='#00ffaa'; ctx.textAlign='center';
+      ctx.fillText(player1.score, canvas.width/4,50);
+      ctx.fillText(player2.score, canvas.width*3/4,50);
+    }
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawNet();
+      drawRect(player1.x,player1.y,paddleW,paddleH);
+      drawRect(player2.x,player2.y,paddleW,paddleH);
+      drawBall(); drawScore();
+    }
+
+    function update(){
+      if(paused||gameOver) return;
+
+      player1.y = Math.max(0, Math.min(canvas.height-paddleH, player1.y + player1.dir));
+
+      const aiSpeed = difficulty*2;
+      const targetY = ball.y - paddleH/2;
+      player2.y += (player2.y < targetY ? aiSpeed : -aiSpeed);
+      player2.y = Math.max(0, Math.min(canvas.height-paddleH, player2.y));
+
+      ball.x += ball.dx; ball.y += ball.dy;
+
+      // Wall
+      if(ball.y<=0||ball.y+ball.size>=canvas.height){
+        ball.dy*=-1; wallCount++; playSound('wall');
+      }
+
+      // Paddle hit
+      const hit = (
+        ball.x<=player1.x+paddleW && ball.y+ball.size>player1.y && ball.y<player1.y+paddleH
+      ) || (
+        ball.x+ball.size>=player2.x && ball.y+ball.size>player2.y && ball.y<player2.y+paddleH
+      );
+      if(hit){
+        ball.dx*=-1; hitCount++; rallyCount++; playSound('bounce');
+        const now = Date.now();
+        if(lastHitTime) reactionTimes.push(now - lastHitTime);
+        lastHitTime = now;
+      }
+
+      // Score
+      if(ball.x<=0){ player2.score++; playSound('goal'); checkWinner(); resetBall(); }
+      else if(ball.x+ball.size>=canvas.width){
+        player1.score++; playSound('goal'); checkWinner(); resetBall();
+      }
+
+      draw(); updateAIInsights();
+    }
+
+    function checkWinner(){
+      if(player1.score>=maxScore){ document.getElementById('winner').innerText='🏆 You Win!'; gameOver=true; playSound('win'); }
+      if(player2.score>=maxScore){ document.getElementById('winner').innerText='🤖 AI Wins!'; gameOver=true; playSound('win'); }
+    }
+
+    function resetBall(){
+      ball.x=canvas.width/2; ball.y=canvas.height/2;
+      const ang=Math.random()*Math.PI/4, dir=Math.random()>0.5?1:-1;
+      const speed=4+difficulty;
+      ball.dx=Math.cos(ang)*speed*dir;
+      ball.dy=Math.sin(ang)*speed*(Math.random()>0.5?1:-1);
+    }
+
+    function resetGame(){
+      player1.score=player2.score=0;
+      player1.y=player2.y=170;
+      paused=gameOver=false;
+      rallyCount=hitCount=wallCount=0;
+      reactionTimes=[]; lastHitTime=null;
+      startTime=Date.now();
+      document.getElementById('winner').innerText='';
+      resetBall();
+    }
+
+    function togglePause(){
+      paused=!paused;
+      document.getElementById('pauseBtn').innerText = paused ? '▶ Resume' : '⏸ Pause';
+    }
+
+    document.addEventListener('keydown', e=>{
+      if(e.key==='ArrowUp') player1.dir=-6;
+      if(e.key==='ArrowDown') player1.dir=6;
+    });
+    document.addEventListener('keyup',()=>{ player1.dir=0; });
+
+    // Launch
+    resetBall(); draw();
+    setInterval(update, 30);
+  </script>
+</body>
+</html>
